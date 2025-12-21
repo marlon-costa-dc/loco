@@ -1156,7 +1156,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
 mod tests {
     use super::*;
     use crate::tests_cfg::{
-        config::get_database_config, db::get_value, postgres::setup_postgres_container,
+        config::get_database_config, db::get_value, postgres::setup_postgres_container, mysql::setup_mysql_container,
     };
 
     #[tokio::test]
@@ -1192,6 +1192,25 @@ mod tests {
 
         let db = result.unwrap();
         assert_eq!(db.get_database_backend(), DatabaseBackend::Postgres);
+    }
+
+    #[tokio::test]
+    async fn test_mysql_connect_success() {
+        let (mysql_url, _container) = setup_mysql_container().await;
+        let mut config = crate::tests_cfg::config::get_database_config();
+        config.uri = mysql_url;
+        config.min_connections = 1;
+        config.max_connections = 5;
+        
+        let result = connect(&config).await;
+        assert!(
+            result.is_ok(),
+            "Failed to connect to MySQL: {:?}",
+            result.err()
+        );
+
+        let db = result.unwrap();
+        assert_eq!(db.get_database_backend(), DatabaseBackend::MySql);
     }
 
     #[tokio::test]
@@ -1396,7 +1415,7 @@ mod tests {
             "Test database '{test_db_name}' not exists"
         );
     }
-
+    
     #[tokio::test]
     async fn test_postgres_has_id_column() {
         let (pg_url, _container) = setup_postgres_container().await;
@@ -1518,6 +1537,46 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn test_mysql_has_id_column() {
+        let (mysql_url, _container) = setup_mysql_container().await;
+        let mut config = crate::tests_cfg::config::get_database_config();
+        config.uri = mysql_url;
+        let db = connect(&config)
+            .await
+            .expect("Failed to connect to MySQL");
+        let backend = db.get_database_backend();
+
+        // Table without ID
+        let table_no_id = "test_table_no_id";
+        db.execute(Statement::from_string(
+            backend,
+            format!("CREATE TABLE `{table_no_id}` (name TEXT);"),
+        ))
+        .await
+        .expect("Failed to create table without id");
+
+        let has_id = has_id_column(&db, &backend, table_no_id)
+            .await
+            .expect("Failed to check for id column");
+        assert!(!has_id, "Table should NOT have an 'id' column");
+
+        // Table with standard ID
+        let table_with_id = "test_table_with_id";
+        db.execute(Statement::from_string(
+            backend,
+            format!("CREATE TABLE `{table_with_id}` (id INTEGER PRIMARY KEY, name TEXT);"),
+        ))
+        .await
+        .expect("Failed to create table with id");
+
+        let has_id = has_id_column(&db, &backend, table_with_id)
+            .await
+            .expect("Failed to check for id column");
+        assert!(has_id, "Table SHOULD have an 'id' column");
+    }
+
+ 
     #[tokio::test]
     async fn test_postgres_is_auto_increment() {
         let (pg_url, _container) = setup_postgres_container().await;
@@ -1785,8 +1844,6 @@ mod tests {
         use insta::assert_snapshot;
         use sea_orm::QueryOrder;
 
-        // Arrange: create a temporary SQLite database with a table that has
-        // a variety of column types we support in loco.
         let (config, tree_fs) = get_sqlite_test_config("dump_types");
         let db = connect(&config)
             .await
@@ -1796,16 +1853,6 @@ mod tests {
 
         let table_name = "dump_types";
 
-        // Create table with representative types:
-        // - integer PK
-        // - boolean (required + optional)
-        // - integer (required + optional)
-        // - real (required)
-        // - text (required + optional)
-        // - created_at (text datetime-like)
-        // - uuid-like text
-        // - json-like text (object)
-        // - array-like text (JSON array)
         db.execute_raw(Statement::from_string(
             backend,
             format!(
@@ -1828,8 +1875,6 @@ mod tests {
         .await
         .expect("Failed to create dump_types table");
 
-        // Insert a couple of rows. For SQLite, BOOLEAN is typically stored as 0/1
-        // and NULL is allowed for the optional columns.
         db.execute_raw(Statement::from_string(
             backend,
             format!(
@@ -1841,7 +1886,6 @@ mod tests {
         .await
         .expect("Failed to insert test data into dump_types table");
 
-        // Act: dump the table into a YAML file in the temp tree_fs folder.
         let dump_dir = tree_fs.root.join("dump");
         std::fs::create_dir_all(&dump_dir).expect("Failed to create dump directory");
 
@@ -1853,11 +1897,8 @@ mod tests {
         let yaml_content = std::fs::read_to_string(&yaml_path)
             .unwrap_or_else(|e| panic!("Failed to read YAML dump at {yaml_path:?}: {e}"));
 
-        // Snapshot the actual YAML file contents, exactly as written by dump_tables.
         assert_snapshot!("dump_tables_sqlite_all_types", yaml_content);
 
-        // Round-trip validation:
-        // 1) Truncate the table
         db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
@@ -1865,7 +1906,6 @@ mod tests {
         .await
         .expect("Failed to truncate dump_types table");
 
-        // 2) Seed it back from the dumped YAML using the same seed() logic
         seed::<DumpTypesActiveModel>(
             &db,
             yaml_path.to_str().expect("YAML path should be valid UTF-8"),
@@ -1873,7 +1913,6 @@ mod tests {
         .await
         .expect("seed from dumped YAML failed");
 
-        // 3) Select rows back in a deterministic order and snapshot their JSON form.
         let models = DumpTypesEntity::find()
             .order_by_asc(dump_types_entity::Column::Id)
             .all(&db)
@@ -1889,6 +1928,42 @@ mod tests {
             "dump_tables_sqlite_all_types_roundtrip",
             serde_json::to_string_pretty(&roundtripped).unwrap()
         );
+    }
+
+    #[tokio::test]
+    async fn test_mysql_reset_autoincrement() {
+        let (mysql_url, _container) = setup_mysql_container().await;
+        let mut config = crate::tests_cfg::config::get_database_config();
+        config.uri = mysql_url;
+        let db = connect(&config).await.unwrap();
+        let backend = db.get_database_backend();
+
+        let table_name = "test_reset_table";
+        db.execute_raw(Statement::from_string(
+            backend,
+            format!("CREATE TABLE `{table_name}` (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));"),
+        ))
+        .await
+        .unwrap();
+
+        let auto_inc = is_auto_increment(&db, &backend, table_name).await.unwrap();
+        assert!(auto_inc, "Should detect auto_increment on MySQL");
+
+        db.execute_raw(Statement::from_string(
+            backend,
+            format!("INSERT INTO `{table_name}` (name) VALUES ('first');"),
+        ))
+        .await
+        .unwrap();
+
+        reset_autoincrement(backend, table_name, &db).await.expect("Failed to reset");
+
+        db.execute_raw(Statement::from_string(backend, format!("TRUNCATE TABLE `{table_name}`;"))).await.unwrap();
+        reset_autoincrement(backend, table_name, &db).await.unwrap();
+
+        db.execute_raw(Statement::from_string(backend, format!("INSERT INTO `{table_name}` (name) VALUES ('after_reset');"))).await.unwrap();
+        let last_id = get_value(&db, &format!("SELECT id FROM `{table_name}` LIMIT 1")).await;
+        assert_eq!(last_id, "1");
     }
 
     #[test]
