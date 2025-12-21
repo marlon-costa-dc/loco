@@ -387,6 +387,19 @@ async fn has_id_column(
                 .await?;
             result.is_some_and(|row| row.try_get::<i32>("", "count").unwrap_or(0) > 0)
         }
+        DatabaseBackend::MySql => {
+            let query = format!(
+                "SELECT COUNT(*) as count
+                 FROM information_schema.columns
+                 WHERE table_schema = DATABASE()
+                 AND table_name = '{table_name}'
+                 AND column_name = 'id'"
+            );
+            let result = db
+                .query_one_raw(Statement::from_string(DatabaseBackend::MySql, query))
+                .await?;
+            result.is_some_and(|row| row.try_get::<i64>("", "count").unwrap_or(0) > 0)
+        }
         bk => {
             return Err(DbErr::BackendNotSupported {
                 db: bk.as_str(),
