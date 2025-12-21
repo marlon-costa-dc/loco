@@ -513,6 +513,14 @@ pub async fn reset_autoincrement(
             ))
             .await?;
         }
+        DatabaseBackend::MySql => {
+            let query_str = format!("ALTER TABLE `{table_name}` AUTO_INCREMENT = 1");
+            db.execute_raw(Statement::from_string(
+                DatabaseBackend::MySql,
+                query_str,
+            ))
+            .await?;
+        }
         bk => {
             return Err(DbErr::BackendNotSupported {
                 db: bk.as_str(),
