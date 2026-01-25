@@ -248,13 +248,16 @@ async fn get_connection(client: &RedisPool) -> Result<Connection> {
 
 /// Calculate Redis ZSET score from priority and timestamp
 ///
-/// Formula: -priority * 1e10 + timestamp_millis
+/// Formula: -priority * 1e10 + `timestamp_millis`
 /// - Negative priority ensures ZPOPMIN gets highest priority first
 /// - Timestamp provides deterministic ordering for equal priorities
 /// - Using 1e10 multiplier ensures priority dominates over timestamp differences
 fn calculate_score(priority: i32, timestamp: DateTime<Utc>) -> f64 {
+    // Note: timestamp_millis() returns i64, which can lose precision when cast to f64
+    // but this is acceptable for our use case as we only need millisecond precision
+    #[allow(clippy::cast_precision_loss)]
     let timestamp_millis = timestamp.timestamp_millis() as f64;
-    -priority as f64 * 1e10 + timestamp_millis
+    f64::from(-priority).mul_add(1e10, timestamp_millis)
 }
 
 /// Clear tasks
@@ -310,7 +313,7 @@ pub async fn enqueue(
     Ok(job.id)
 }
 
-const ACQUIRE_JOB_SCRIPT: &str = r#"
+const ACQUIRE_JOB_SCRIPT: &str = r"
 local queue_key = KEYS[1]
 local processing_key = KEYS[2]
 local job_id = ARGV[1]
@@ -323,13 +326,17 @@ if score then
 else
     return nil
 end
-"#;
+";
 
 async fn dequeue_with_conn(
     conn: &mut Connection,
     queues: &[String],
     tags: &[String],
 ) -> Result<Option<(Job, String)>> {
+    // Constants for paging through the queue
+    const BATCH_SIZE: isize = 50;
+    const MAX_SEARCH: isize = 1000;
+
     if queues.is_empty() {
         return Ok(None);
     }
@@ -342,8 +349,6 @@ async fn dequeue_with_conn(
 
         // Paging through the queue to find a matching job
         let mut offset = 0;
-        const BATCH_SIZE: isize = 50;
-        const MAX_SEARCH: isize = 1000;
 
         while offset < MAX_SEARCH {
             let job_ids: Vec<String> = conn
