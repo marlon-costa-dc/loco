@@ -1,7 +1,8 @@
 #![allow(clippy::implicit_hasher)]
 use std::collections::HashMap;
+use std::str::FromStr;
 
-use byte_unit::Byte;
+use byte_unit::{Byte, UnitType};
 use serde_json::value::Value;
 use tera::Result;
 
@@ -76,11 +77,11 @@ pub fn number_with_delimiter(value: &Value, _: &HashMap<String, Value>) -> Resul
 /// If the `value` is not a numeric value, the function will return the original
 /// value as a string without any error.
 pub fn number_to_human_size(value: &Value, _: &HashMap<String, Value>) -> Result<Value> {
-    Byte::from_str(value.to_string()).map_or_else(
+    Byte::from_str(value.to_string().as_str()).map_or_else(
         |_| Ok(value.clone()),
-        |byte_unit| {
+        |byte_unit: Byte| {
             Ok(Value::String(
-                byte_unit.get_appropriate_unit(false).to_string(),
+                byte_unit.get_appropriate_unit(UnitType::Decimal).to_string(),
             ))
         },
     )
