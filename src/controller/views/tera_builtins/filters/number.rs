@@ -81,7 +81,9 @@ pub fn number_to_human_size(value: &Value, _: &HashMap<String, Value>) -> Result
         |_| Ok(value.clone()),
         |byte_unit: Byte| {
             Ok(Value::String(
-                byte_unit.get_appropriate_unit(UnitType::Decimal).to_string(),
+                byte_unit
+                    .get_appropriate_unit(UnitType::Decimal)
+                    .to_string(),
             ))
         },
     )
