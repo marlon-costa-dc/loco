@@ -80,11 +80,12 @@ pub fn number_to_human_size(value: &Value, _: &HashMap<String, Value>) -> Result
     Byte::from_str(value.to_string().as_str()).map_or_else(
         |_| Ok(value.clone()),
         |byte_unit: Byte| {
-            Ok(Value::String(
-                byte_unit
-                    .get_appropriate_unit(UnitType::Decimal)
-                    .to_string(),
-            ))
+            let adjusted = byte_unit.get_appropriate_unit(UnitType::Decimal);
+            Ok(Value::String(format!(
+                "{:.2} {}",
+                adjusted.get_value(),
+                adjusted.get_unit()
+            )))
         },
     )
 }
