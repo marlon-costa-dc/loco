@@ -497,11 +497,8 @@ pub async fn reset_autoincrement(
         }
         DatabaseBackend::MySql => {
             let query_str = format!("ALTER TABLE `{table_name}` AUTO_INCREMENT = 1");
-            db.execute_raw(Statement::from_string(
-                DatabaseBackend::MySql,
-                query_str,
-            ))
-            .await?;
+            db.execute_raw(Statement::from_string(DatabaseBackend::MySql, query_str))
+                .await?;
         }
         bk => {
             return Err(DbErr::BackendNotSupported {
@@ -1014,7 +1011,7 @@ pub async fn dump_tables(
                         row.try_get::<DateTime<Utc>>("", &col_name)
                             .map(|v| serde_json::Value::String(v.to_rfc3339()))
                     })
-                    .or_else(|_| row.try_get::<serde_json::Value>(""  , &col_name))
+                    .or_else(|_| row.try_get::<serde_json::Value>("", &col_name))
                     .ok();
 
                 if let Some(mut value) = value_result {
@@ -1134,7 +1131,8 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
 mod tests {
     use super::*;
     use crate::tests_cfg::{
-        config::get_database_config, db::get_value, postgres::setup_postgres_container, mysql::setup_mysql_container,
+        config::get_database_config, db::get_value, mysql::setup_mysql_container,
+        postgres::setup_postgres_container,
     };
 
     #[tokio::test]
@@ -1179,7 +1177,7 @@ mod tests {
         config.uri = mysql_url;
         config.min_connections = 1;
         config.max_connections = 5;
-        
+
         let result = connect(&config).await;
         assert!(
             result.is_ok(),
@@ -1393,7 +1391,7 @@ mod tests {
             "Test database '{test_db_name}' not exists"
         );
     }
-    
+
     #[tokio::test]
     async fn test_postgres_has_id_column() {
         let (pg_url, _container) = setup_postgres_container().await;
@@ -1520,9 +1518,7 @@ mod tests {
         let (mysql_url, _container) = setup_mysql_container().await;
         let mut config = crate::tests_cfg::config::get_database_config();
         config.uri = mysql_url;
-        let db = connect(&config)
-            .await
-            .expect("Failed to connect to MySQL");
+        let db = connect(&config).await.expect("Failed to connect to MySQL");
         let backend = db.get_database_backend();
 
         // Table without ID
@@ -1554,7 +1550,6 @@ mod tests {
         assert!(has_id, "Table SHOULD have an 'id' column");
     }
 
- 
     #[tokio::test]
     async fn test_postgres_is_auto_increment() {
         let (pg_url, _container) = setup_postgres_container().await;
@@ -1934,12 +1929,24 @@ mod tests {
         .await
         .unwrap();
 
-        reset_autoincrement(backend, table_name, &db).await.expect("Failed to reset");
+        reset_autoincrement(backend, table_name, &db)
+            .await
+            .expect("Failed to reset");
 
-        db.execute_raw(Statement::from_string(backend, format!("TRUNCATE TABLE `{table_name}`;"))).await.unwrap();
+        db.execute_raw(Statement::from_string(
+            backend,
+            format!("TRUNCATE TABLE `{table_name}`;"),
+        ))
+        .await
+        .unwrap();
         reset_autoincrement(backend, table_name, &db).await.unwrap();
 
-        db.execute_raw(Statement::from_string(backend, format!("INSERT INTO `{table_name}` (name) VALUES ('after_reset');"))).await.unwrap();
+        db.execute_raw(Statement::from_string(
+            backend,
+            format!("INSERT INTO `{table_name}` (name) VALUES ('after_reset');"),
+        ))
+        .await
+        .unwrap();
         let last_id = get_value(&db, &format!("SELECT id FROM `{table_name}` LIMIT 1")).await;
         assert_eq!(last_id, "1");
     }
