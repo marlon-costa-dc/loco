@@ -77,17 +77,17 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = "0.9"
 serde_variant = "0.1.2"
-toml = "0.8"
+toml = "1.0"
 
 async-trait = { workspace = true }
 
 axum = { workspace = true }
-axum-extra = { version = "0.10", features = ["cookie"] }
+axum-extra = { version = "0.12", features = ["cookie"] }
 regex = { workspace = true }
 # mailer
 tera = { workspace = true }
 heck = { workspace = true }
-cruet = "0.13.0"
+cruet = "0.15"
 lettre = { version = "0.11.4", default-features = false, features = [
     "builder",
     "hostname",
@@ -97,7 +97,7 @@ lettre = { version = "0.11.4", default-features = false, features = [
 include_dir = "0.7.3"
 thiserror = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3.16", default-features = false, features = [
+tracing-subscriber = { version = "0.3", default-features = false, features = [
     "env-filter",
     "json",
     "ansi",
@@ -117,10 +117,10 @@ validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 bytes = "1.1"
-ipnetwork = "0.20.0"
+ipnetwork = "0.21"
 semver = "1"
 
-axum-test = { version = "17.0.1", optional = true }
+axum-test = { version = "18.7", optional = true }
 tree-fs = { version = "0.3", optional = true }
 
 chrono = { workspace = true }
@@ -128,7 +128,7 @@ chrono = { workspace = true }
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # File Upload
-opendal = { version = "0.54", default-features = false, features = [
+opendal = { version = "0.55", default-features = false, features = [
     "services-memory",
     "services-fs",
 ] }
@@ -182,7 +182,7 @@ tower-http = { version = "0.6.8", features = [
     "set-header",
     "compression-full",
 ] }
-heck = "0.4.0"
+heck = "0.5"
 duct = { version = "1.0.0" }
 
 [dependencies.sea-orm-migration]
@@ -202,7 +202,7 @@ features = ["testing"]
 
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }
-rstest = "0.21.0"
+rstest = "0.26"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 tree-fs = { version = "0.3" }
 reqwest = { version = "0.13", features = ["json"] }
