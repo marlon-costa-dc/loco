@@ -4,7 +4,7 @@
 //! database interactions.
 
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::Write as FmtWrites,
     fs,
     fs::File,
@@ -18,7 +18,8 @@ use chrono::{DateTime, Utc};
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, DbConn, DbErr, EntityTrait, ExprTrait,
+    IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
 use tracing::info;
@@ -30,25 +31,6 @@ use crate::{
     config, doctor, env_vars,
     errors::Error,
 };
-use chrono::{DateTime, Utc};
-use regex::Regex;
-use sea_orm::{
-    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DatabaseConnectionType, DbBackend, DbConn, DbErr, EntityTrait, ExprTrait,
-    IntoActiveModel, Statement,
-};
-use sea_orm_migration::MigratorTrait;
-use std::fmt::Write as FmtWrites;
-use std::{
-    collections::{BTreeMap, HashMap, HashSet},
-    fs,
-    fs::File,
-    io::Write,
-    path::Path,
-    sync::OnceLock,
-    time::Duration,
-};
-use tracing::info;
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
 const IGNORED_TABLES: &[&str] = &[
@@ -1001,10 +983,6 @@ pub async fn dump_tables(
                             .map(serde_json::Value::String)
                     })
                     .or_else(|_| {
-                        row.try_get::<bool>("", &col_name)
-                            .map(serde_json::Value::Bool)
-                    })
-                    .or_else(|_| {
                         row.try_get::<i8>("", &col_name)
                             .map(serde_json::Value::from)
                     })
@@ -1549,7 +1527,7 @@ mod tests {
 
         // Table without ID
         let table_no_id = "test_table_no_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE `{table_no_id}` (name TEXT);"),
         ))
@@ -1563,7 +1541,7 @@ mod tests {
 
         // Table with standard ID
         let table_with_id = "test_table_with_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE `{table_with_id}` (id INTEGER PRIMARY KEY, name TEXT);"),
         ))
@@ -2010,7 +1988,7 @@ model-extra-derives = "ts_rs::Ts"
 
         // Create test table with boolean columns
         let table_name = "test_boolean_table";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!(
                 "CREATE TABLE {table_name} (
@@ -2026,7 +2004,7 @@ model-extra-derives = "ts_rs::Ts"
         .expect("Failed to create test table");
 
         // Insert test data with various boolean values
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!(
                 "INSERT INTO {table_name} (name, active, enabled, nullable_bool) VALUES 
