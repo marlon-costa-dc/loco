@@ -11,6 +11,8 @@
 //! request action to enforce the payload limit correctly. Without this, the
 //! middleware will not function as intended.
 
+use std::str::FromStr;
+
 use axum::Router as AXRouter;
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -54,8 +56,8 @@ where
         "disable" => Ok(DefaultBodyLimitKind::Disable),
         limit => {
             let bytes = byte_unit::Byte::from_str(limit)
-                .map_err(|err| serde::de::Error::custom(err.to_string()))?
-                .get_bytes();
+                .map_err(|err: byte_unit::ParseError| serde::de::Error::custom(err.to_string()))?
+                .as_u128();
             Ok(DefaultBodyLimitKind::Limit(bytes as usize))
         }
     }
