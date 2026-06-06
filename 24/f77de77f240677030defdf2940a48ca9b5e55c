@@ -1,0 +1,42 @@
+src/tests_cfg/queue.rs
+  s_f1e46703a06425::t_f36bc6c6169d41 5-13,20-21,50-51
+src/cargo_config.rs
+  s_f1e46703a06425::t_f36bc6c6169d41 87-103,164,173
+src/bgworker/sqlt.rs
+  s_64c182eb86dc9e::t_a461c20268b4c9 534
+  s_8b71eb1f63a67b::t_268cbe1bf39285 233-234,257-260,535
+docs-site/content/docs/the-app/models.md
+  s_f1e46703a06425::t_f36bc6c6169d41 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "24f77de77f240677030defdf2940a48ca9b5e55c",
+  "prompts": {},
+  "sessions": {
+    "s_64c182eb86dc9e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9a50-f152-74c2-bc71-2f973915b762",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    },
+    "s_8b71eb1f63a67b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "019e9a51-a958-7913-a420-730183a6b10f",
+        "model": "unknown"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    },
+    "s_f1e46703a06425": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9a51-a958-7913-a420-730183a6b10f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Zed <hi@zed.dev>"
+    }
+  }
+}
