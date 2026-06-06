@@ -230,8 +230,8 @@ async fn connect(cfg: &SqliteQueueConfig) -> Result<SqlitePool> {
 /// This function will return an error if it fails
 pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
     debug!("Initializing job database tables");
-    sqlx::query(
-        &format!(r"
+    let query = format!(
+        r"
             CREATE TABLE IF NOT EXISTS sqlt_loco_queue (
                 id TEXT NOT NULL,
                 name TEXT NOT NULL,
@@ -254,10 +254,10 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
             INSERT OR IGNORE INTO sqlt_loco_queue_lock (id, is_locked) VALUES (1, FALSE);
 
             CREATE INDEX IF NOT EXISTS idx_sqlt_queue_status_run_at ON sqlt_loco_queue(status, run_at);
-            ", JobStatus::Queued),
-    )
-    .execute(pool)
-    .await?;
+            ",
+        JobStatus::Queued
+    );
+    sqlx::query(&query).execute(pool).await?;
 
     // Check if priority column exists and add it if missing (for existing databases)
     let priority_exists: bool = sqlx::query_scalar(
@@ -531,11 +531,8 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
         .join(",");
 
     debug!(status = ?status, "Clearing jobs by status");
-    sqlx::query(&format!(
-        "DELETE FROM sqlt_loco_queue WHERE status IN ({status_in})"
-    ))
-    .execute(pool)
-    .await?;
+    let query = format!("DELETE FROM sqlt_loco_queue WHERE status IN ({status_in})");
+    sqlx::query(&query).execute(pool).await?;
 
     Ok(())
 }
