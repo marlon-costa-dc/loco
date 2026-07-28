@@ -129,13 +129,16 @@ chrono = { workspace = true }
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # File Upload
-opendal = { version = "0.55", default-features = false, features = [
+opendal = { git = "https://github.com/apache/opendal.git", rev = "be3a9f0d088c62c294b1acc68b36928df330383a", default-features = false, features = [
+    "layers-retry",
     "services-memory",
     "services-fs",
 ] }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
+crossbeam-epoch = { workspace = true }
+quinn = { workspace = true }
 bb8-redis = { version = "0.26", optional = true }
 bb8 = { version = "0.9", optional = true }
 
@@ -185,6 +188,8 @@ tower-http = { version = "0.6.8", features = [
 ] }
 heck = "0.5"
 duct = { version = "1.0.0" }
+crossbeam-epoch = "0.9.20"
+quinn = "0.11.11"
 
 [dependencies.sea-orm-migration]
 optional = true
