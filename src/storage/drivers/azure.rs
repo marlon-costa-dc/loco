@@ -27,6 +27,6 @@ pub fn new(
         .endpoint(endpoint);
 
     Ok(Box::new(OpendalAdapter::new(
-        Operator::new(azure)?.finish(),
+        Operator::new(azure)?,
     )))
 }

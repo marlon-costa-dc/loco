@@ -17,8 +17,6 @@ use crate::storage::drivers::opendal_adapter::OpendalAdapter;
 #[must_use]
 pub fn new() -> Box<dyn StoreDriver> {
     Box::new(OpendalAdapter::new(
-        Operator::new(Memory::default())
-            .expect("memory service must build with success")
-            .finish(),
+        Operator::new(Memory::default()).expect("memory service must build with success"),
     ))
 }
